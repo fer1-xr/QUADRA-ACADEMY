@@ -12,8 +12,9 @@ window.QA_CONFIG = {
   brand: 'Quadra Academy',
 
   // Supabase (cuentas reales + videos protegidos)
-  supabaseUrl: '',
-  supabaseAnonKey: '',
+  supabaseUrl: 'https://siwhwcmibqwiwfampixv.supabase.co',
+  // Clave pública (publishable): es segura en el navegador, la seguridad la da RLS.
+  supabaseAnonKey: 'sb_publishable_zjBdTDMttYKi1rR6B9bLcQ_pOrAwo8-',
 
   // A dónde va el botón "Comprar" en producción.
   // Puede ser un link de pago (Pagopar, Bancard, Stripe, Mercado Pago…)

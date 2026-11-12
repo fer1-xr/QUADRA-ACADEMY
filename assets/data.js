@@ -14,7 +14,9 @@
 (function () {
   var SAMPLE = 'https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4';
 
-  function L(id, title, dur, free) { return { id: id, title: title, dur: dur, free: !!free, video: SAMPLE }; }
+  // Solo las lecciones gratis llevan el video acá (es público).
+  // Los videos de lecciones pagas se cargan en Supabase → tabla lesson_videos.
+  function L(id, title, dur, free) { return { id: id, title: title, dur: dur, free: !!free, video: free ? SAMPLE : null }; }
 
   window.QA_CATEGORIES = ['Todos', 'Contabilidad', 'Tributación', 'Laboral', 'Inteligencia artificial'];
 

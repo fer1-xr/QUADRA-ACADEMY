@@ -38,23 +38,23 @@ alter table public.lesson_videos   enable row level security;
 -- enrollments: cada alumno ve solo sus compras (sin insert/update/delete desde el navegador)
 drop policy if exists "ver mis compras" on public.enrollments;
 create policy "ver mis compras" on public.enrollments
-  for select to authenticated using (user_id = auth.uid());
+  for select to authenticated using (user_id = (select auth.uid()));
 
 -- lesson_progress: cada alumno gestiona solo su progreso, y solo de cursos que compró
 drop policy if exists "ver mi progreso" on public.lesson_progress;
 create policy "ver mi progreso" on public.lesson_progress
-  for select to authenticated using (user_id = auth.uid());
+  for select to authenticated using (user_id = (select auth.uid()));
 
 drop policy if exists "guardar mi progreso" on public.lesson_progress;
 create policy "guardar mi progreso" on public.lesson_progress
   for insert to authenticated with check (
-    user_id = auth.uid()
-    and exists (select 1 from public.enrollments e where e.user_id = auth.uid() and e.course_slug = lesson_progress.course_slug)
+    user_id = (select auth.uid())
+    and exists (select 1 from public.enrollments e where e.user_id = (select auth.uid()) and e.course_slug = lesson_progress.course_slug)
   );
 
 drop policy if exists "borrar mi progreso" on public.lesson_progress;
 create policy "borrar mi progreso" on public.lesson_progress
-  for delete to authenticated using (user_id = auth.uid());
+  for delete to authenticated using (user_id = (select auth.uid()));
 
 -- lesson_videos: gratis para todos; pagas solo para inscritos
 drop policy if exists "videos gratis" on public.lesson_videos;
@@ -64,7 +64,7 @@ create policy "videos gratis" on public.lesson_videos
 drop policy if exists "videos de mis cursos" on public.lesson_videos;
 create policy "videos de mis cursos" on public.lesson_videos
   for select to authenticated using (
-    exists (select 1 from public.enrollments e where e.user_id = auth.uid() and e.course_slug = lesson_videos.course_slug)
+    exists (select 1 from public.enrollments e where e.user_id = (select auth.uid()) and e.course_slug = lesson_videos.course_slug)
   );
 
 -- =========================================================
