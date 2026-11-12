@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="es-PY">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Aula — Quadra Academy</title>
+<link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+<script>
+(function(){var t;try{t=localStorage.getItem('quadra-theme')}catch(e){}
+if(t!=='dark'&&t!=='light'){t=(window.matchMedia&&matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light'}
+document.documentElement.setAttribute('data-theme',t)})();
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&family=Geist+Mono:wght@400;500&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/styles.css">
+</head>
+<body>
+<header class="nav" id="nav"></header>
+
+<div class="classroom">
+  <main class="stage">
+    <div class="crumbs" style="color:var(--ink-3);margin-bottom:16px"><a href="mis-cursos.html">Mis cursos</a><span>/</span><a id="crumbCourse" href="#"></a></div>
+    <div class="player" id="player"></div>
+    <div class="lesson-head">
+      <div><small id="lMod"></small><h1 id="lTitle"></h1></div>
+      <div class="lesson-actions" id="actions"></div>
+    </div>
+    <p class="lesson-notes" id="lNotes"></p>
+  </main>
+  <aside class="syllabus">
+    <div class="syllabus-head">
+      <h2 id="sTitle"></h2>
+      <div class="progress"><i id="sBar" style="width:0"></i></div>
+      <div class="progress-lbl"><span id="sPct">0% completado</span><span id="sCount"></span></div>
+    </div>
+    <div id="sList"></div>
+  </aside>
+</div>
+
+<script src="assets/config.js"></script>
+<script src="assets/data.js"></script>
+<script src="assets/store.js"></script>
+<script src="assets/app.js"></script>
+<script>
+(async function () {
+  var user = await QA.mountShell({ solidNav: true, active: 'mis-cursos' });
+  var c = QA_findCourse(QA.param('c'));
+  if (!c) { location.replace(user ? 'mis-cursos.html' : 'index.html'); return; }
+
+  var lessons = QA_lessons(c);
+  var owned = user ? (await QA_STORE.getEnrollments()).indexOf(c.slug) !== -1 : false;
+  var done = owned ? await QA_STORE.getProgress(c.slug) : [];
+
+  // Lección actual: la pedida, o la primera sin completar
+  var current = lessons.filter(function (l) { return l.id === QA.param('l'); })[0];
+  if (!current) current = owned ? (lessons.filter(function (l) { return done.indexOf(l.id) === -1; })[0] || lessons[0]) : lessons.filter(function (l) { return l.free; })[0];
+  if (!current) { location.replace('curso.html?c=' + c.slug); return; }
+
+  var canWatch = owned || current.free;
+  document.title = current.title + ' · ' + c.title + ' — Quadra Academy';
+  var crumb = document.getElementById('crumbCourse');
+  crumb.textContent = c.title; crumb.href = owned ? 'aula.html?c=' + c.slug : 'curso.html?c=' + c.slug;
+  if (!user) crumb.previousElementSibling.previousElementSibling.href = 'index.html#cursos';
+
+  var modTitle = '';
+  c.modules.forEach(function (m, mi) { if (m.lessons.indexOf(current) !== -1) modTitle = 'Módulo ' + (mi + 1) + ' · ' + m.title; });
+  document.getElementById('lMod').textContent = modTitle;
+  document.getElementById('lTitle').textContent = current.title;
+  document.getElementById('lNotes').textContent = canWatch
+    ? 'Duración: ' + current.dur + '. ' + (owned ? 'Cuando termines, marcá la lección como completada para guardar tu avance.' : 'Esta es una lección de muestra gratuita. Comprá el curso para acceder a todo el temario.')
+    : '';
+
+  // Reproductor
+  var player = document.getElementById('player');
+  if (canWatch) {
+    var src = await QA_STORE.getLessonVideo(c, current);
+    if (src) {
+      player.innerHTML = QA.videoHTML(src) + (/interactive-examples\.mdn/.test(src) ? '<span class="sample-tag">Video de muestra · reemplazalo en assets/data.js</span>' : '');
+      var v = player.querySelector('video');
+      if (v) {
+        v.addEventListener('error', function () { player.innerHTML = lockedHTML('No se pudo cargar el video', 'Revisá la URL del video de esta lección.', ''); });
+        if (owned) v.addEventListener('ended', function () { if (done.indexOf(current.id) === -1) toggleDone(true); });
+      }
+    } else {
+      player.innerHTML = lockedHTML('Video en preparación', 'Esta lección todavía no tiene video cargado. Volvé pronto.', '');
+    }
+  } else {
+    var action = user
+      ? '<a href="curso.html?c=' + c.slug + '" class="btn btn-primary">Comprar curso · ' + QA.gs(c.price) + QA.ICON.arrow + '</a>'
+      : '<a href="ingresar.html?next=' + encodeURIComponent('aula.html?c=' + c.slug + '&l=' + current.id) + '" class="btn btn-primary">Iniciar sesión' + QA.ICON.arrow + '</a>';
+    player.innerHTML = lockedHTML('Lección bloqueada', user ? 'Esta lección es parte del curso completo. Compralo para desbloquear todos los videos.' : 'Iniciá sesión con la cuenta con la que compraste el curso.', action);
+  }
+
+  function lockedHTML(title, text, action) {
+    return '<div class="locked on-dark"><div>' + QA.ICON.lock + '<h3>' + QA.esc(title) + '</h3><p>' + QA.esc(text) + '</p>' + action + '</div></div>';
+  }
+
+  // Acciones
+  var idx = lessons.indexOf(current), prev = lessons[idx - 1], next = lessons[idx + 1];
+  var actions = document.getElementById('actions');
+  function renderActions() {
+    var isDone = done.indexOf(current.id) !== -1;
+    actions.innerHTML =
+      (prev ? '<a class="btn btn-line" href="aula.html?c=' + c.slug + '&l=' + prev.id + '">← Anterior</a>' : '') +
+      (owned ? '<button class="btn ' + (isDone ? 'btn-done' : 'btn-line') + '" id="doneBtn">' + (isDone ? QA.ICON.check + 'Completada' : 'Marcar como completada') + '</button>' : '') +
+      (next ? '<a class="btn btn-dark" href="aula.html?c=' + c.slug + '&l=' + next.id + '">Siguiente' + QA.ICON.arrow + '</a>' : '');
+    var b = document.getElementById('doneBtn');
+    if (b) b.addEventListener('click', function () { toggleDone(!isDone); });
+  }
+  async function toggleDone(val) {
+    await QA_STORE.setLessonDone(c.slug, current.id, val);
+    var i = done.indexOf(current.id);
+    if (val && i === -1) done.push(current.id);
+    if (!val && i !== -1) done.splice(i, 1);
+    if (val) QA.toast(done.length === lessons.length ? '¡Felicitaciones! Completaste el curso.' : 'Lección completada');
+    renderActions(); renderSyllabus();
+  }
+
+  // Temario lateral
+  document.getElementById('sTitle').textContent = c.title;
+  function renderSyllabus() {
+    var count = lessons.filter(function (l) { return done.indexOf(l.id) !== -1; }).length;
+    var pct = Math.round(count / lessons.length * 100);
+    document.getElementById('sBar').style.width = pct + '%';
+    document.getElementById('sPct').textContent = owned ? pct + '% completado' : 'Vista previa';
+    document.getElementById('sCount').textContent = count + ' / ' + lessons.length;
+    document.getElementById('sList').innerHTML = c.modules.map(function (m, mi) {
+      return '<div class="syl-mod"><h4>Módulo ' + (mi + 1) + ' · ' + QA.esc(m.title) + '</h4>' + m.lessons.map(function (l) {
+        var cls = (l === current ? 'on ' : '') + (done.indexOf(l.id) !== -1 ? 'done' : '');
+        var open = owned || l.free;
+        return '<a href="aula.html?c=' + c.slug + '&l=' + l.id + '" class="' + cls + '"' + (open ? '' : ' style="opacity:.55"') + '>' +
+          '<span class="ck">' + (open ? QA.ICON.check : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="opacity:1;width:11px;height:11px"><rect x="5" y="10.5" width="14" height="10" rx="2.5"/><path d="M8 10.5V7.5a4 4 0 018 0v3"/></svg>') + '</span>' +
+          '<span>' + QA.esc(l.title) + (l.free && !owned ? '<span class="free">Gratis</span>' : '') + '</span><time>' + l.dur + '</time></a>';
+      }).join('') + '</div>';
+    }).join('');
+  }
+  renderActions(); renderSyllabus();
+})();
+</script>
+</body>
+</html>

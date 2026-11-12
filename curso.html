@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="es-PY">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Curso — Quadra Academy</title>
+<link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+<script>
+(function(){var t;try{t=localStorage.getItem('quadra-theme')}catch(e){}
+if(t!=='dark'&&t!=='light'){t=(window.matchMedia&&matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light'}
+document.documentElement.setAttribute('data-theme',t)})();
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&family=Geist+Mono:wght@400;500&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/styles.css">
+</head>
+<body>
+<header class="nav" id="nav"></header>
+
+<main>
+  <section class="hero page on-dark">
+    <div class="hero-grid-lines" aria-hidden="true"></div>
+    <div class="wrap">
+      <div class="hero-copy">
+        <div class="crumbs rv"><a href="index.html">Inicio</a><span>/</span><a href="index.html#cursos">Cursos</a><span>/</span><span id="crumbCat"></span></div>
+        <h1 class="rv d1" id="cTitle"></h1>
+        <p class="sub rv d2" id="cShort"></p>
+        <div class="hero-meta rv d3" style="justify-content:flex-start" id="cMeta"></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="pad" style="background:var(--paper);padding-top:64px">
+    <div class="wrap detail">
+      <div>
+        <div class="box rv"><h3>Sobre este curso</h3><p id="cDesc"></p></div>
+        <div class="box rv"><h3>Lo que vas a aprender</h3><ul class="outcomes" id="cOutcomes"></ul></div>
+        <div class="box rv"><h3>Temario</h3><div id="cModules"></div></div>
+      </div>
+      <aside class="box buy rv d1" id="buyBox"></aside>
+    </div>
+  </section>
+</main>
+
+<footer id="footer"></footer>
+
+<script src="assets/config.js"></script>
+<script src="assets/data.js"></script>
+<script src="assets/store.js"></script>
+<script src="assets/app.js"></script>
+<script>
+(async function () {
+  var user = await QA.mountShell({ active: 'cursos' });
+  var c = QA_findCourse(QA.param('c'));
+  if (!c) { location.replace('index.html#cursos'); return; }
+
+  var owned = user ? (await QA_STORE.getEnrollments()).indexOf(c.slug) !== -1 : false;
+  var lessons = QA_lessons(c);
+  document.title = c.title + ' — Quadra Academy';
+
+  document.getElementById('crumbCat').textContent = c.category;
+  document.getElementById('cTitle').textContent = c.title;
+  document.getElementById('cShort').textContent = c.short;
+  document.getElementById('cDesc').textContent = c.description;
+  document.getElementById('cMeta').innerHTML =
+    '<span>' + QA.ICON.clock + c.hours + ' horas</span><span>' + QA.ICON.play + lessons.length + ' lecciones</span><span>' + QA.ICON.level + QA.esc(c.level) + '</span>';
+  document.getElementById('cOutcomes').innerHTML = c.outcomes.map(function (o) { return '<li>' + QA.ICON.check + QA.esc(o) + '</li>'; }).join('');
+  document.getElementById('cModules').innerHTML = c.modules.map(function (m, i) {
+    return '<details class="module"' + (i === 0 ? ' open' : '') + '><summary>' + QA.esc(m.title) + '<small>' + m.lessons.length + ' lecciones</small></summary><ol>' +
+      m.lessons.map(function (l) {
+        var label = QA.esc(l.title) + (l.free ? '<span class="free">Gratis</span>' : '');
+        var inner = '<span>' + label + '</span><span>' + l.dur + '</span>';
+        return (owned || l.free) ? '<li><a href="aula.html?c=' + c.slug + '&l=' + l.id + '" style="display:contents">' + inner + '</a></li>' : '<li>' + inner + '</li>';
+      }).join('') + '</ol></details>';
+  }).join('');
+
+  var buy = document.getElementById('buyBox');
+  var cover = '<div class="cover" style="--c1:' + c.c1 + ';--c2:' + c.c2 + '"><span class="cat">' + QA.esc(c.category) + '</span><span class="glyph">' + QA.esc(c.glyph) + '</span></div>';
+  var perks = '<ul><li>' + QA.ICON.check + 'Acceso de por vida</li><li>' + QA.ICON.check + lessons.length + ' lecciones en video</li><li>' + QA.ICON.check + 'Material descargable</li><li>' + QA.ICON.check + 'Certificado de finalización</li></ul>';
+  var free = lessons.filter(function (l) { return l.free; })[0];
+
+  if (owned) {
+    buy.innerHTML = cover + '<span class="st ok">Ya tenés este curso</span><h3 style="margin:14px 0 0">¡Seguí aprendiendo!</h3>' +
+      '<a href="aula.html?c=' + c.slug + '" class="btn btn-dark">Ir al curso' + QA.ICON.arrow + '</a>' + perks;
+  } else {
+    buy.innerHTML = cover +
+      '<div class="price"><span class="cur">₲</span><span class="amt num">' + QA.py(c.price) + '</span></div>' +
+      (c.oldPrice ? '<div class="price-note"><s class="num">' + QA.gs(c.oldPrice) + '</s> · Ahorrás ' + Math.round((1 - c.price / c.oldPrice) * 100) + '%</div>' : '') +
+      '<button class="btn btn-dark" id="buyBtn">Comprar curso' + QA.ICON.arrow + '</button>' +
+      (free ? '<a href="aula.html?c=' + c.slug + '&l=' + free.id + '" class="btn btn-line">Ver lección gratis</a>' : '') +
+      (QA_STORE.mode === 'demo' ? '<p class="demo-note">Modo demo: la compra se activa al instante, sin cobro real.</p>' : '') +
+      perks;
+
+    document.getElementById('buyBtn').addEventListener('click', async function () {
+      if (!user) { location.href = 'ingresar.html?modo=registro&next=' + encodeURIComponent('curso.html?c=' + c.slug); return; }
+      try {
+        var r = await QA_STORE.purchase(c.slug);
+        if (r.enrolled) { QA.toast('¡Compra confirmada! Ya podés ver el curso.'); setTimeout(function () { location.href = 'aula.html?c=' + c.slug; }, 900); }
+        else QA.toast('Te llevamos al pago. Tu curso se activa apenas se confirme.');
+      } catch (err) { QA.toast(err.message); }
+    });
+  }
+  QA.reveal();
+})();
+</script>
+</body>
+</html>

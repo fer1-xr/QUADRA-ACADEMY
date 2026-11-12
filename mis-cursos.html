@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="es-PY">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mis cursos — Quadra Academy</title>
+<link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+<script>
+(function(){var t;try{t=localStorage.getItem('quadra-theme')}catch(e){}
+if(t!=='dark'&&t!=='light'){t=(window.matchMedia&&matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light'}
+document.documentElement.setAttribute('data-theme',t)})();
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&family=Geist+Mono:wght@400;500&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/styles.css">
+</head>
+<body>
+<header class="nav" id="nav"></header>
+
+<main>
+  <section class="hero page on-dark">
+    <div class="hero-grid-lines" aria-hidden="true"></div>
+    <div class="wrap">
+      <div class="hero-copy">
+        <span class="eyebrow rv">Mi aprendizaje</span>
+        <h1 class="rv d1">Hola, <span class="serif" id="hello">…</span></h1>
+        <p class="sub rv d2">Acá están todos los cursos que compraste. Retomá donde lo dejaste.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="pad" style="background:var(--paper);padding-top:56px">
+    <div class="wrap">
+      <div class="dash-kpis rv" id="kpis">
+        <div><small>Cursos comprados</small><strong class="num" id="kOwned">0</strong></div>
+        <div><small>Lecciones completadas</small><strong class="num" id="kDone">0</strong></div>
+        <div><small>Avance general</small><strong class="num" id="kPct">0%</strong></div>
+      </div>
+      <div class="dash-head"><h2>Mis cursos</h2><a href="index.html#cursos" class="btn btn-line">Explorar más cursos</a></div>
+      <div class="courses" id="mine"></div>
+
+      <div id="suggest" hidden>
+        <div class="dash-head" style="margin-top:72px"><h2>Te puede interesar</h2></div>
+        <div class="courses" id="others"></div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer id="footer"></footer>
+
+<script src="assets/config.js"></script>
+<script src="assets/data.js"></script>
+<script src="assets/store.js"></script>
+<script src="assets/app.js"></script>
+<script>
+(async function () {
+  var user = await QA.mountShell({ active: 'mis-cursos' });
+  if (!user) { location.replace('ingresar.html?next=mis-cursos.html'); return; }
+  document.getElementById('hello').textContent = user.name.split(' ')[0] + '.';
+
+  var owned = await QA_STORE.getEnrollments();
+  var mine = QA_COURSES.filter(function (c) { return owned.indexOf(c.slug) !== -1; });
+  var others = QA_COURSES.filter(function (c) { return owned.indexOf(c.slug) === -1; });
+
+  var totalLessons = 0, totalDone = 0;
+  var cards = await Promise.all(mine.map(async function (c) {
+    var ids = QA_lessons(c).map(function (l) { return l.id; });
+    var done = (await QA_STORE.getProgress(c.slug)).filter(function (id) { return ids.indexOf(id) !== -1; }).length;
+    totalLessons += ids.length; totalDone += done;
+    return QA.courseCard(c, { owned: true, hideOwned: true, progress: done / ids.length });
+  }));
+
+  document.getElementById('kOwned').textContent = mine.length;
+  document.getElementById('kDone').textContent = totalDone;
+  document.getElementById('kPct').textContent = (totalLessons ? Math.round(totalDone / totalLessons * 100) : 0) + '%';
+
+  var grid = document.getElementById('mine');
+  grid.innerHTML = cards.length ? cards.join('') :
+    '<div class="empty"><h3>Todavía no compraste ningún curso</h3><p>Explorá el catálogo y empezá con una lección gratis.</p><a href="index.html#cursos" class="btn btn-dark">Ver cursos' + QA.ICON.arrow + '</a></div>';
+
+  if (others.length) {
+    document.getElementById('suggest').hidden = false;
+    document.getElementById('others').innerHTML = others.slice(0, 3).map(function (c) { return QA.courseCard(c); }).join('');
+  }
+  QA.reveal();
+})();
+</script>
+</body>
+</html>

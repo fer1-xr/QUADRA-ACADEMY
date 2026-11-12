@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="es-PY">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ingresar — Quadra Academy</title>
+<link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+<script>
+(function(){var t;try{t=localStorage.getItem('quadra-theme')}catch(e){}
+if(t!=='dark'&&t!=='light'){t=(window.matchMedia&&matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light'}
+document.documentElement.setAttribute('data-theme',t)})();
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&family=Geist+Mono:wght@400;500&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/styles.css">
+</head>
+<body>
+<div class="auth-shell">
+  <aside class="auth-side on-dark">
+    <a href="index.html" class="brand" id="brand"></a>
+    <div>
+      <span class="eyebrow">Tu aula virtual</span>
+      <h2 style="margin-top:18px">Todo lo que compraste,<br><span class="serif">en un solo lugar.</span></h2>
+      <p>Entrá a tus cursos, mirá los videos cuando quieras y llevá el control de tu avance lección por lección.</p>
+      <ul>
+        <li><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 8.5l3 3 7-7"/></svg>Acceso de por vida a tus cursos</li>
+        <li><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 8.5l3 3 7-7"/></svg>Lecciones de muestra gratis</li>
+        <li><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 8.5l3 3 7-7"/></svg>Tu progreso guardado en tu cuenta</li>
+      </ul>
+    </div>
+    <small>© Quadra Academy · Asunción, Paraguay</small>
+  </aside>
+
+  <main class="auth-main">
+    <div class="top-tools">
+      <a href="index.html" class="btn btn-line" style="height:40px;font-size:14px">← Volver al inicio</a>
+      <button class="theme-btn" aria-label="Cambiar tema" id="themeSlot"></button>
+    </div>
+    <div class="auth-box">
+      <h1 id="title">Bienvenido de nuevo</h1>
+      <p id="subtitle">Ingresá para ver tus cursos.</p>
+
+      <div class="tabs" role="tablist">
+        <button class="tab" role="tab" aria-selected="true" data-mode="login">Iniciar sesión</button>
+        <button class="tab" role="tab" aria-selected="false" data-mode="registro">Crear cuenta</button>
+      </div>
+
+      <div class="form-msg" id="msg" role="alert"></div>
+
+      <form class="form" id="loginForm" novalidate>
+        <div class="field"><label for="li-email">Correo electrónico</label><input id="li-email" type="email" autocomplete="email" required placeholder="tu@correo.com"></div>
+        <div class="field"><label for="li-pass">Contraseña</label><input id="li-pass" type="password" autocomplete="current-password" required placeholder="••••••••"></div>
+        <button class="btn btn-dark" type="submit">Ingresar <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 8h10M9 4l4 4-4 4"/></svg></button>
+        <p class="form-note"><a href="#" id="forgot" style="text-decoration:underline">¿Olvidaste tu contraseña?</a></p>
+      </form>
+
+      <form class="form" id="signupForm" novalidate hidden>
+        <div class="field"><label for="su-name">Nombre y apellido</label><input id="su-name" type="text" autocomplete="name" required placeholder="María González"></div>
+        <div class="field"><label for="su-email">Correo electrónico</label><input id="su-email" type="email" autocomplete="email" required placeholder="tu@correo.com"></div>
+        <div class="field"><label for="su-pass">Contraseña</label><input id="su-pass" type="password" autocomplete="new-password" required minlength="6" placeholder="Mínimo 6 caracteres"></div>
+        <button class="btn btn-dark" type="submit">Crear mi cuenta <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 8h10M9 4l4 4-4 4"/></svg></button>
+        <p class="form-note">Al crear tu cuenta aceptás los <a href="#" style="text-decoration:underline">Términos</a> y la <a href="#" style="text-decoration:underline">Política de privacidad</a>.</p>
+      </form>
+
+      <p class="demo-note" id="demoNote" hidden>Modo demo: las cuentas se guardan solo en este navegador. Configurá Supabase en <code>assets/config.js</code> para cuentas reales.</p>
+    </div>
+  </main>
+</div>
+
+<script src="assets/config.js"></script>
+<script src="assets/data.js"></script>
+<script src="assets/store.js"></script>
+<script src="assets/app.js"></script>
+<script>
+(async function () {
+  document.getElementById('brand').innerHTML = QA.LOGO + 'Quadra <span class="serif" style="font-size:1.08em;margin-left:-4px">Academy</span>';
+  document.getElementById('themeSlot').innerHTML = QA.ICON.moon + QA.ICON.sun;
+  QA.bindTheme();
+  if (QA_STORE.mode === 'demo') document.getElementById('demoNote').hidden = false;
+
+  var next = QA.param('next') || 'mis-cursos.html';
+  if (!/^[\w\-]+\.html(\?[\w\-=&%.]*)?$/.test(next)) next = 'mis-cursos.html'; // solo rutas internas
+
+  if (await QA_STORE.getUser()) { location.replace(next); return; }
+
+  var msg = document.getElementById('msg');
+  var loginForm = document.getElementById('loginForm'), signupForm = document.getElementById('signupForm');
+  var tabs = document.querySelectorAll('.auth-box .tab');
+
+  function show(text, kind) { msg.textContent = text; msg.className = 'form-msg ' + (kind || 'err'); }
+  function clear() { msg.className = 'form-msg'; msg.textContent = ''; }
+
+  function setMode(mode) {
+    var reg = mode === 'registro';
+    tabs.forEach(function (t) { t.setAttribute('aria-selected', t.dataset.mode === mode); });
+    loginForm.hidden = reg; signupForm.hidden = !reg;
+    document.getElementById('title').textContent = reg ? 'Creá tu cuenta' : 'Bienvenido de nuevo';
+    document.getElementById('subtitle').textContent = reg ? 'Es gratis y te lleva menos de un minuto.' : 'Ingresá para ver tus cursos.';
+    clear();
+  }
+  tabs.forEach(function (t) { t.addEventListener('click', function () { setMode(t.dataset.mode); }); });
+  setMode(QA.param('modo') === 'registro' ? 'registro' : 'login');
+
+  function busy(form, on) { var b = form.querySelector('button[type=submit]'); b.disabled = on; b.style.opacity = on ? .6 : 1; }
+  var emailRe = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+  loginForm.addEventListener('submit', async function (e) {
+    e.preventDefault(); clear();
+    var email = document.getElementById('li-email').value, pass = document.getElementById('li-pass').value;
+    if (!emailRe.test(email)) return show('Ingresá un correo válido.');
+    if (!pass) return show('Ingresá tu contraseña.');
+    busy(loginForm, true);
+    try { await QA_STORE.signIn(email, pass); location.href = next; }
+    catch (err) { show(err.message); busy(loginForm, false); }
+  });
+
+  signupForm.addEventListener('submit', async function (e) {
+    e.preventDefault(); clear();
+    var name = document.getElementById('su-name').value.trim(), email = document.getElementById('su-email').value, pass = document.getElementById('su-pass').value;
+    if (name.length < 2) return show('Ingresá tu nombre.');
+    if (!emailRe.test(email)) return show('Ingresá un correo válido.');
+    if (pass.length < 6) return show('La contraseña debe tener al menos 6 caracteres.');
+    busy(signupForm, true);
+    try {
+      var r = await QA_STORE.signUp(name, email, pass);
+      if (r.needsConfirmation) { show('¡Listo! Te enviamos un correo para confirmar tu cuenta. Después iniciá sesión.', 'ok'); setTimeout(function () { setMode('login'); show('Confirmá tu correo y luego ingresá.', 'ok'); }, 2500); busy(signupForm, false); }
+      else location.href = next;
+    } catch (err) { show(err.message); busy(signupForm, false); }
+  });
+
+  document.getElementById('forgot').addEventListener('click', async function (e) {
+    e.preventDefault(); clear();
+    var email = document.getElementById('li-email').value;
+    if (!emailRe.test(email)) return show('Escribí tu correo arriba y volvé a hacer clic.');
+    try { await QA_STORE.resetPassword(email); show('Te enviamos un enlace para restablecer tu contraseña.', 'ok'); }
+    catch (err) { show(err.message); }
+  });
+})();
+</script>
+</body>
+</html>
